@@ -64,5 +64,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("com.chargemap.compose:numberpicker:1.0.3")
+    implementation(libs.numberpicker)
+    //Hilt Libs | Dependency injection
+    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+    implementation("com.google.dagger:hilt-android:2.46.1")
+    implementation("com.google.dagger:hilt-android-compiler:2.46.1")
 }
