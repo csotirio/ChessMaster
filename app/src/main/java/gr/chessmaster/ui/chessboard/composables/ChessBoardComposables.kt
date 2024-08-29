@@ -2,6 +2,8 @@ package gr.chessmaster.ui.chessboard.composables
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,34 +24,41 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
 import com.chargemap.compose.numberpicker.NumberPicker
 import gr.chessmaster.R
+import gr.chessmaster.ui.chessboard.model.ChessBoardPlace
+import gr.chessmaster.ui.chessboard.model.ChessBoardUiState
 import gr.chessmaster.ui.theme.ChessMasterTheme
 import gr.chessmaster.util.LOWER_LIMIT_SIZE_OF_CHESSBOARD
 import gr.chessmaster.util.UPPER_LIMIT_SIZE_OF_CHESSBOARD
 
-private typealias OnPickerValueChange = (Int) -> Unit
+private typealias OnSizeOfTheBoardSpinnerValueChange = (Int) -> Unit
 private typealias OnMaxNumberOfMovesEditTextValueChange = (String) -> Unit
+private typealias OnChessBoardPlaceClicked = (ChessBoardPlace) -> Unit
 private typealias OnSeeTheResultsButtonClicked = () -> Unit
 private typealias OnResetTheBoardButtonClicked = () -> Unit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreenContent() {
-    val navController = rememberNavController()
+fun ChessboardScreen(
+    uiState: ChessBoardUiState = ChessBoardUiState(),
+    onSizeOfTheBoardSpinnerValueChange: OnSizeOfTheBoardSpinnerValueChange,
+    onMaxNumberOfMovesEditTextValueChange: OnMaxNumberOfMovesEditTextValueChange,
+    onChessBoardPlaceClicked: OnChessBoardPlaceClicked,
+    onSeeTheResultsButtonClicked: OnSeeTheResultsButtonClicked,
+    onResetTheBoardButtonClicked: OnResetTheBoardButtonClicked
+) {
     Scaffold(modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
@@ -77,12 +86,16 @@ fun MainScreenContent() {
             ) {
                 item {
                     Chessboard(
-                        boardSize = 8,
-                        selectedPlaces = listOf(Pair(4,5), Pair(7,4))
+                        chestBoardSize = uiState.chessBoardSize.value,
+                        places = uiState.chessBoard,
+                        onChessBoardPlaceClicked = onChessBoardPlaceClicked
                     )
-                    Row {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier.fillMaxWidth()) {
                         Button(
-                            onClick = { /*TODO*/ },
+                            onClick = { onSeeTheResultsButtonClicked() },
+                            enabled = uiState.isSeeTheResultsButtonEnabled.value
                         ) {
                             Text(
                                 text = "See the results",
@@ -92,7 +105,7 @@ fun MainScreenContent() {
                             )
                         }
                         Button(
-                            onClick = { /*TODO*/ },
+                            onClick = { onResetTheBoardButtonClicked() }
                         ) {
                             Text(
                                 text = "Reset the board",
@@ -108,16 +121,16 @@ fun MainScreenContent() {
                             .padding(10.dp)
                     ) {
                         SizeOfTheBoardSpinnerWithTitle(
-                            pickerValue = 6,
-                            onPickerValueChange = { lal -> },
+                            pickerValue = uiState.chessBoardSize,
+                            onSizeOfTheBoardSpinnerValueChange = onSizeOfTheBoardSpinnerValueChange,
                             modifier = Modifier
                                 .weight(0.5f)
                                 .padding(10.dp)
                         )
                         MaxNumberOfMovesInputFieldWithTitle(
-                            value = remember { mutableStateOf("0") },
-                            onMaxNumberOfMovesEditTextValueChange = { lala -> },
-                            hasError = remember { mutableStateOf(false) },
+                            value = uiState.maxNumberOfMoves,
+                            onMaxNumberOfMovesEditTextValueChange = onMaxNumberOfMovesEditTextValueChange,
+                            hasError = uiState.hasMaxNumberOfMovesError,
                             modifier = Modifier
                                 .weight(0.5f)
                                 .padding(10.dp)
@@ -131,33 +144,30 @@ fun MainScreenContent() {
 
 @Composable
 fun Chessboard(
-    boardSize: Int,
-    selectedPlaces: List<Pair<Int, Int>>
+    chestBoardSize: Int,
+    places: List<ChessBoardPlace>,
+    onChessBoardPlaceClicked: OnChessBoardPlaceClicked
 ) {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(10.dp)
-        .border(5.dp, Color.Red, RectangleShape)
-        .padding(5.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp)
+            .border(5.dp, Color.Red, RectangleShape)
+            .padding(5.dp)
     ) {
-        for (i in 0 until boardSize) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                for (j in 0 until boardSize) {
-                    val placeColor = if (selectedPlaces.contains(Pair(i,j))) {
-                        if(selectedPlaces.indexOf(Pair(i,j)) == 0 ){
-                            Color.Red
-                        }else {
-                            Color.Blue
-                        }
-                    }else {
-                        if ((i + j) % 2 == 0) Color.White else Color.Black
+        for (i in 0 until chestBoardSize) {
+            Row {
+                for (j in 0 until chestBoardSize) {
+                    val place = places.firstOrNull { it.xPositions == j && it.yPositions == i }
+                    place?.let {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .background(place.color.value)
+                                .clickable { onChessBoardPlaceClicked(place) }
+                        )
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .background(placeColor)
-                    )
                 }
             }
         }
@@ -166,8 +176,8 @@ fun Chessboard(
 
 @Composable
 fun SizeOfTheBoardSpinnerWithTitle(
-    pickerValue: Int,
-    onPickerValueChange: OnPickerValueChange,
+    pickerValue: MutableState<Int>,
+    onSizeOfTheBoardSpinnerValueChange: OnSizeOfTheBoardSpinnerValueChange,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -182,7 +192,7 @@ fun SizeOfTheBoardSpinnerWithTitle(
         )
         SizeOfTheBoardSpinner(
             pickerValue = pickerValue,
-            onPickerValueChange = onPickerValueChange,
+            onSizeOfTheBoardSpinnerValueChange = onSizeOfTheBoardSpinnerValueChange,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
     }
@@ -190,21 +200,21 @@ fun SizeOfTheBoardSpinnerWithTitle(
 
 @Composable
 fun SizeOfTheBoardSpinner(
-    pickerValue: Int,
-    onPickerValueChange: OnPickerValueChange,
+    pickerValue: MutableState<Int>,
+    onSizeOfTheBoardSpinnerValueChange: OnSizeOfTheBoardSpinnerValueChange,
     modifier: Modifier = Modifier
 ) {
     NumberPicker(
-        value = pickerValue,
+        value = pickerValue.value,
         range = LOWER_LIMIT_SIZE_OF_CHESSBOARD..UPPER_LIMIT_SIZE_OF_CHESSBOARD,
-        onValueChange = onPickerValueChange,
+        onValueChange = { onSizeOfTheBoardSpinnerValueChange(it) },
         modifier = modifier
     )
 }
 
 @Composable
 fun MaxNumberOfMovesInputFieldWithTitle(
-    value: MutableState<String>,
+    value: MutableState<Int?>,
     onMaxNumberOfMovesEditTextValueChange: OnMaxNumberOfMovesEditTextValueChange,
     hasError: MutableState<Boolean>,
     modifier: Modifier = Modifier
@@ -232,26 +242,29 @@ fun MaxNumberOfMovesInputFieldWithTitle(
 
 @Composable
 fun MaxNumberOfMovesInputField(
-    value: MutableState<String>,
+    value: MutableState<Int?>,
     onMaxNumberOfMovesEditTextValueChange: OnMaxNumberOfMovesEditTextValueChange,
     hasError: MutableState<Boolean>,
     modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
-        value = value.value,
-        onValueChange = onMaxNumberOfMovesEditTextValueChange,
+        value = value.value?.toString() ?: "",
+        onValueChange = { onMaxNumberOfMovesEditTextValueChange(it) },
         label = { Text("Max Number of moves") },
-        supportingText = { Text("Max Number of moves") },
+        supportingText = { if (hasError.value) Text("Please set a number") },
         isError = hasError.value,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
         modifier = modifier
     )
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun ChessboardScreenPreview() {
     ChessMasterTheme {
-        MainScreenContent()
+        ChessboardScreen(
+            ChessBoardUiState(),
+            {}, {}, {}, {}, {}
+        )
     }
 }
